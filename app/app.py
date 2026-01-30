@@ -3,95 +3,65 @@ import pandas as pd
 import plotly.express as px
 import os
 
-# --- إعدادات الصفحة والهوية البصرية ---
-st.set_page_config(page_title="Barça Intelligence Dashboard", layout="wide", page_icon="🔵")
+# --- إعدادات الصفحة ---
+st.set_page_config(page_title="FCB Analytics", layout="wide")
 
-# تصميم CSS مخصص لخلفية احترافية وألوان النادي
+# تصميم CSS للهوية البصرية
 st.markdown("""
     <style>
-    .main {
-        background: linear-gradient(135deg, #004d98 0%, #a50044 100%);
-        color: white;
-    }
-    [data-testid="stMetricValue"] { color: #edbb00 !important; font-size: 32px; }
-    .stMetric {
-        background-color: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(237, 187, 0, 0.4);
-        border-radius: 12px;
-        padding: 15px;
-    }
-    .plot-container { border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); }
+    .main { background-color: #004d98; color: white; }
+    .stMetric { background-color: rgba(165, 0, 68, 0.2); border-radius: 10px; padding: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
 @st.cache_data
 def load_data():
-    # حل مشكلة المسار للوصول لمجلد data من داخل مجلد app
+    # 1. تحديد المسار بدقة
     current_dir = os.path.dirname(__file__)
     file_path = os.path.join(current_dir, '..', 'data', 'FC_Barcelona_Big_Dataset_TimeSeries.csv')
     
-    # تحميل البيانات وتحويل التواريخ
+    # 2. قراءة البيانات مع معالجة الأسماء
     df = pd.read_csv(file_path)
-    df['Date'] = pd.to_datetime(df['Date'])
+    
+    # تنظيف أسماء الأعمدة من أي مسافات زائدة
+    df.columns = df.columns.str.strip()
+    
+    # التأكد من وجود عمود التاريخ وتحويله
+    if 'Date' in df.columns:
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        df = df.dropna(subset=['Date']) # حذف الصفوف التي لا تحتوي على تاريخ صحيح
+    else:
+        st.error("لم يتم العثور على عمود باسم 'Date'. الأعمدة المتاحة هي: " + str(df.columns.tolist()))
+        
     return df
 
 try:
     df = load_data()
 
-    # --- القائمة الجانبية (Sidebar) ---
-    st.sidebar.image("https://upload.wikimedia.org/wikipedia/en/thumb/4/47/FC_Barcelona_logo.svg/200px-FC_Barcelona_logo.svg.png", width=120)
-    st.sidebar.markdown("## فلاتر التحليل")
+    # --- القائمة الجانبية ---
+    st.sidebar.image("https://upload.wikimedia.org/wikipedia/en/thumb/4/47/FC_Barcelona_logo.svg/200px-FC_Barcelona_logo.svg.png", width=100)
     
-    seasons = st.sidebar.multiselect("📅 الموسم", options=df['Season'].unique(), default=df['Season'].unique()[:3])
-    venue = st.sidebar.radio("🏟️ الملعب", ["الكل", "Home", "Away"])
+    # فلتر المواسم
+    seasons = st.sidebar.multiselect("اختر الموسم", options=df['Season'].unique(), default=df['Season'].unique()[:2])
     
-    # تصفية البيانات بناءً على الاختيارات
-    filtered_df = df[df['Season'].isin(seasons)]
-    if venue != "الكل":
-        filtered_df = filtered_df[filtered_df['Venue'] == venue]
+    filtered_df = df[df['Season'].isin(seasons)].sort_values('Date')
 
-    # --- الواجهة الرئيسية ---
-    st.title("🔵🔴 FC Barcelona Intelligence Hub")
-    st.markdown("---")
+    # --- العرض الرئيسي ---
+    st.title("🔵🔴 FC Barcelona Performance Hub")
+    
+    # عرض الـ KPIs
+    col1, col2, col3 = st.columns(3)
+    col1.metric("إجمالي المباريات", len(filtered_df))
+    col2.metric("متوسط الاستحواذ", f"{round(filtered_df['Poss'].mean(), 1)}%")
+    col3.metric("الأهداف المسجلة", filtered_df['GF'].sum())
 
-    # صف المؤشرات (KPIs)
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    with kpi1:
-        st.metric("إجمالي المباريات", len(filtered_df))
-    with kpi2:
-        win_rate = round((len(filtered_df[filtered_df['Result'] == 'W']) / len(filtered_df)) * 100, 1) if len(filtered_df)>0 else 0
-        st.metric("نسبة الفوز", f"{win_rate}%")
-    with kpi3:
-        st.metric("أهداف مسجلة (GF)", filtered_df['GF'].sum()) #
-    with kpi4:
-        avg_poss = round(filtered_df['Poss'].mean(), 1) #
-        st.metric("متوسط الاستحواذ", f"{avg_poss}%")
+    # رسم بياني احترافي
+    fig = px.line(filtered_df, x='Date', y='GF', title='تطور التهديف عبر الزمن',
+                  color_discrete_sequence=['#edbb00'], template="plotly_dark")
+    st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("---")
-
-    # الرسوم البيانية
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("📈 تحليل الأهداف المسجلة والمستقبلة")
-        fig_goals = px.area(filtered_df.sort_values('Date'), x='Date', y=['GF', 'GA'], 
-                            color_discrete_map={"GF": "#edbb00", "GA": "#ffffff"},
-                            template="plotly_dark")
-        st.plotly_chart(fig_goals, use_container_width=True)
-
-    with col2:
-        st.subheader("🎯 الاستحواذ مقابل النتيجة")
-        fig_scatter = px.scatter(filtered_df, x='Poss', y='GF', color='Result',
-                                 hover_data=['Opponent', 'Date'],
-                                 color_discrete_map={"W": "#00c853", "D": "#ffd600", "L": "#d50000"},
-                                 template="plotly_dark")
-        st.plotly_chart(fig_scatter, use_container_width=True)
-
-    # جدول البيانات
-    with st.expander("📋 عرض تفاصيل المباريات"):
-        st.dataframe(filtered_df[['Date', 'Opponent', 'Result', 'GF', 'GA', 'Poss', 'Attendance']], 
-                     use_container_width=True)
+    # عرض البيانات
+    st.dataframe(filtered_df, use_container_width=True)
 
 except Exception as e:
-    st.error(f"حدث خطأ في المسار: {e}")
-    st.info("تأكد من تحديث المستودع ليكون ملف البيانات داخل مجلد data والكود داخل app.")
+    st.error(f"حدث خطأ: {e}")
