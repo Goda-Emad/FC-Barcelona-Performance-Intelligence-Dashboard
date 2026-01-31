@@ -52,14 +52,22 @@ set_background(ASSETS_DIR / "barca_bg.png")
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_DIR / "FC_Barcelona_Big_Dataset_TimeSeries.csv")
-    # Clean column names
+
+    # Rename columns for dashboard consistency
+    df.rename(columns={
+        "season_x": "season",
+        "player": "player",
+        "xG_x": "xg",            # team-level xG
+        "xG_y": "player_xg",     # player-level xG
+        "shots_x": "shots",      # team-level shots
+        "shots_y": "player_shots" # player-level shots
+    }, inplace=True)
+
+    # Clean all column names
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
     return df
 
 df = load_data()
-
-# ================== DEBUG: check columns ==================
-# st.write(df.columns.tolist())  # Uncomment to see column names
 
 # ================== HEADER ==================
 col1, col2 = st.columns([1,6])
@@ -73,10 +81,12 @@ with col2:
 # ================== SIDEBAR FILTERS ==================
 st.sidebar.header("🔎 Filters")
 
-# Ensure columns exist
-if "season" not in df.columns or "player" not in df.columns:
-    st.error("Required columns 'season' or 'player' not found in the dataset!")
-    st.stop()
+# Verify required columns exist
+required_cols = ["season", "player"]
+for col in required_cols:
+    if col not in df.columns:
+        st.error(f"Required column '{col}' not found in dataset!")
+        st.stop()
 
 season_filter = st.sidebar.multiselect(
     "Season",
@@ -138,7 +148,7 @@ with tab2:
 # -------- TAB 3: PLAYERS --------
 with tab3:
     st.subheader("Player Contribution")
-    player_stats = filtered.groupby("player")[["goals","assists","minutes_played","xg"]].sum().reset_index()
+    player_stats = filtered.groupby("player")[["goals","assists","minutes_played","player_xg"]].sum().reset_index()
 
     fig5 = px.scatter(
         player_stats,
