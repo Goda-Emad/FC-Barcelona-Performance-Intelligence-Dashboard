@@ -34,7 +34,7 @@ def set_background(image_path):
         background-attachment: fixed;
     }}
     .block-container {{
-        background-color: rgba(0, 0, 0, 0.80);
+        background-color: rgba(0, 0, 0, 0.85);
         padding: 2rem;
         border-radius: 18px;
     }}
@@ -42,7 +42,6 @@ def set_background(image_path):
     </style>
     """, unsafe_allow_html=True)
 
-# الخلفية
 set_background(ASSETS_DIR / "barca_bg.png")
 
 # ================== LOAD DATA ==================
@@ -84,6 +83,7 @@ with col_title:
 # ================== SIDEBAR FILTERS ==================
 st.sidebar.header("🔎 Filters")
 
+# كل المواسم الموجودة
 season_options = sorted(df["season"].unique())
 season_filter = st.sidebar.multiselect(
     "Season",
@@ -91,14 +91,15 @@ season_filter = st.sidebar.multiselect(
     default=season_options
 )
 
-filtered_for_players = df[df["season"].isin(season_filter)]
-player_options = sorted(filtered_for_players["player"].unique())
+# ✅ كل اللاعبين في الداتا الكبيرة (حتى لو مكرر في مواسم مختلفة)
+player_options = sorted(df["player"].unique())
 player_filter = st.sidebar.multiselect(
     "Player",
     options=player_options,
-    default=player_options
+    default=player_options  # كل اللاعبين يظهرون تلقائيًا
 )
 
+# تطبيق الفلاتر
 filtered = df[
     (df["season"].isin(season_filter)) &
     (df["player"].isin(player_filter))
@@ -116,7 +117,6 @@ kpi_data = [
 ]
 
 cols = st.columns(len(kpi_data))
-
 for col, kpi in zip(cols, kpi_data):
     col.markdown(f"""
         <div style="
@@ -154,7 +154,7 @@ fig_player.update_layout(
     xaxis_tickangle=-45,
     plot_bgcolor="rgba(0,0,0,0)",
     paper_bgcolor="rgba(0,0,0,0)",
-    font=dict(color="#FFD700")  # نصوص ذهبية
+    font=dict(color="#FFD700")
 )
 st.plotly_chart(fig_player, use_container_width=True)
 
@@ -198,7 +198,18 @@ with tab3:
     )
     fig5.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig5, use_container_width=True)
-    st.dataframe(player_stats.sort_values(by="goals", ascending=False))
+
+    st.markdown("### بيانات اللاعبين - قابلة للبحث والتحميل")
+    st.dataframe(filtered, height=500)  # scrollbar عمودي للبيانات الكبيرة
+
+    # زر تحميل البيانات المفلترة
+    csv = filtered.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="⬇️ تحميل البيانات المفلترة كـ CSV",
+        data=csv,
+        file_name='barcelona_filtered_data.csv',
+        mime='text/csv'
+    )
 
 with tab4:
     st.subheader("Correlation Insights")
@@ -215,4 +226,4 @@ with tab4:
 
 st.divider()
 st.subheader("Raw Data Preview")
-st.dataframe(filtered.head(30))
+st.dataframe(filtered, height=500)
