@@ -48,6 +48,8 @@ set_background(ASSETS_DIR / "barca_bg.png")
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_DIR / "FC_Barcelona_Big_Dataset_TimeSeries.csv")
+    
+    # إعادة تسمية الأعمدة لتسهيل التعامل
     df.rename(columns={
         "season_x": "season",
         "player": "player",
@@ -56,7 +58,14 @@ def load_data():
         "shots_x": "shots",
         "shots_y": "player_shots"
     }, inplace=True)
+    
+    # تنظيف الأعمدة النصية: إزالة الفراغات الزائدة
+    df['season'] = df['season'].astype(str).str.strip()
+    df['player'] = df['player'].astype(str).str.strip()
+    
+    # تنظيف باقي الأعمدة إذا لزم
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+    
     return df
 
 df = load_data()
@@ -83,7 +92,7 @@ with col_title:
 # ================== SIDEBAR FILTERS ==================
 st.sidebar.header("🔎 Filters")
 
-# ====== فلتر المواسم ======
+# فلتر الموسم
 season_options = sorted(df["season"].unique())
 default_season = ["2024/2025"] if "2024/2025" in season_options else season_options
 
@@ -93,15 +102,16 @@ season_filter = st.sidebar.multiselect(
     default=default_season
 )
 
-# ====== فلتر اللاعبين ======
-player_options = sorted(df["player"].unique())
+# فلتر اللاعبين: نأخذ كل اللاعبين الموجودين في المواسم المحددة
+player_options = sorted(df[df["season"].isin(season_filter)]["player"].unique())
+
 player_filter = st.sidebar.multiselect(
     "Player",
     options=player_options,
-    default=player_options
+    default=player_options  # كل اللاعبين يظهرون افتراضيًا
 )
 
-# ====== تطبيق الفلاتر على الداتا ======
+# تطبيق الفلاتر
 filtered = df[
     (df["season"].isin(season_filter)) &
     (df["player"].isin(player_filter))
