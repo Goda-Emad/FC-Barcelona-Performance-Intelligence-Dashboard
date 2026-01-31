@@ -51,9 +51,15 @@ set_background(ASSETS_DIR / "barca_bg.png")
 # ================== LOAD DATA ==================
 @st.cache_data
 def load_data():
-    return pd.read_csv(DATA_DIR / "FC_Barcelona_Big_Dataset_TimeSeries.csv")
+    df = pd.read_csv(DATA_DIR / "FC_Barcelona_Big_Dataset_TimeSeries.csv")
+    # Clean column names
+    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+    return df
 
 df = load_data()
+
+# ================== DEBUG: check columns ==================
+# st.write(df.columns.tolist())  # Uncomment to see column names
 
 # ================== HEADER ==================
 col1, col2 = st.columns([1,6])
@@ -66,6 +72,11 @@ with col2:
 
 # ================== SIDEBAR FILTERS ==================
 st.sidebar.header("🔎 Filters")
+
+# Ensure columns exist
+if "season" not in df.columns or "player" not in df.columns:
+    st.error("Required columns 'season' or 'player' not found in the dataset!")
+    st.stop()
 
 season_filter = st.sidebar.multiselect(
     "Season",
@@ -92,7 +103,7 @@ k1.metric("Matches", filtered["match_id"].nunique())
 k2.metric("Goals Scored", int(filtered["goals_for"].sum()))
 k3.metric("Goals Conceded", int(filtered["goals_against"].sum()))
 k4.metric("Avg Possession %", round(filtered["possession_pct"].mean(), 1))
-k5.metric("Avg xG", round(filtered["xG"].mean(), 2))
+k5.metric("Avg xG", round(filtered["xg"].mean(), 2))
 
 st.divider()
 
@@ -116,18 +127,18 @@ with tab1:
 # -------- TAB 2: SEASONS --------
 with tab2:
     st.subheader("Season Comparison")
-    season_stats = filtered.groupby("season")[["goals_for","goals_against","xG"]].mean().reset_index()
+    season_stats = filtered.groupby("season")[["goals_for","goals_against","xg"]].mean().reset_index()
 
     fig3 = px.bar(season_stats, x="season", y="goals_for")
     st.plotly_chart(fig3, use_container_width=True)
 
-    fig4 = px.line(season_stats, x="season", y=["xG","goals_for"], markers=True)
+    fig4 = px.line(season_stats, x="season", y=["xg","goals_for"], markers=True)
     st.plotly_chart(fig4, use_container_width=True)
 
 # -------- TAB 3: PLAYERS --------
 with tab3:
     st.subheader("Player Contribution")
-    player_stats = filtered.groupby("player")[["goals","assists","minutes_played","xG"]].sum().reset_index()
+    player_stats = filtered.groupby("player")[["goals","assists","minutes_played","xg"]].sum().reset_index()
 
     fig5 = px.scatter(
         player_stats,
@@ -143,7 +154,7 @@ with tab3:
 # -------- TAB 4: INSIGHTS --------
 with tab4:
     st.subheader("Correlation Insights")
-    corr = filtered[["goals_for","shots","shots_on_target","possession_pct","xG"]].corr()
+    corr = filtered[["goals_for","shots","shots_on_target","possession_pct","xg"]].corr()
     fig6 = px.imshow(corr, text_auto=True, aspect="auto")
     st.plotly_chart(fig6, use_container_width=True)
 
