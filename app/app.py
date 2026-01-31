@@ -1,126 +1,161 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import os
+import base64
 
-# --- 1. إعدادات الصفحة والهوية البصرية ---
-st.set_page_config(page_title="FCB Analytics Hub", layout="wide", page_icon="🔵")
+# ================== PAGE CONFIG ==================
+st.set_page_config(
+    page_title="FC Barcelona Performance Intelligence",
+    layout="wide"
+)
 
-# تصميم CSS متقدم لخلفية احترافية وتنسيق الـ KPIs
-st.markdown("""
+# ================== BACKGROUND FUNCTION ==================
+def set_background(image_file):
+    with open(image_file, "rb") as f:
+        data = f.read()
+    encoded = base64.b64encode(data).decode()
+
+    st.markdown(f"""
     <style>
-    /* تغيير خلفية التطبيق بالكامل لتشبه ألوان برشلونة */
-    .stApp {
-        background: linear-gradient(135deg, #001d3d 0%, #003566 30%, #a50044 100%);
-        color: white;
-    }
-    
-    /* تنسيق كروت الـ KPI */
-    [data-testid="stMetric"] {
-        background-color: rgba(255, 255, 255, 0.07);
-        border: 2px solid #edbb00; /* إطار ذهبي */
-        border-radius: 20px;
-        padding: 20px 10px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        transition: transform 0.3s;
-    }
-    [data-testid="stMetric"]:hover {
-        transform: translateY(-5px);
-    }
-    
-    /* تلوين أرقام الـ KPI باللون الذهبي */
-    [data-testid="stMetricValue"] {
-        color: #edbb00 !important;
-        font-family: 'Arial Black';
-        font-size: 35px !important;
-    }
-    
-    /* تلوين عناوين الـ KPI بالأبيض */
-    [data-testid="stMetricLabel"] {
-        color: #ffffff !important;
-        font-weight: bold;
-        font-size: 18px !important;
-    }
+    .stApp {{
+        background-image: url("data:image/png;base64,{encoded}");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }}
 
-    /* تحسين شكل القائمة الجانبية */
-    .css-1d391kg {
-        background-color: #001d3d !important;
-    }
+    .block-container {{
+        background-color: rgba(0, 0, 0, 0.78);
+        padding: 2rem;
+        border-radius: 18px;
+    }}
+
+    h1, h2, h3, h4 {{
+        color: white;
+    }}
+
+    [data-testid="stMetricValue"] {{
+        color: #FFD700;
+        font-size: 28px;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. دالة تحميل البيانات ---
+# Apply Barcelona background
+set_background("../assets/barca_bg.png")
+
+# ================== LOAD DATA ==================
 @st.cache_data
 def load_data():
-    current_dir = os.path.dirname(__file__)
-    file_path = os.path.join(current_dir, '..', 'data', 'FC_Barcelona_Big_Dataset_TimeSeries.csv')
-    df = pd.read_csv(file_path)
-    return df
+    return pd.read_csv("../data/FC_Barcelona_Big_Dataset_TimeSeries.csv")
 
-try:
-    df = load_data()
+df = load_data()
 
-    # --- 3. القائمة الجانبية (Sidebar) مع اللوجو ---
-    st.sidebar.image("https://upload.wikimedia.org/wikipedia/en/thumb/4/47/FC_Barcelona_logo.svg/1200px-FC_Barcelona_logo.svg.png", width=150)
-    st.sidebar.markdown("<h2 style='text-align: center; color: #edbb00;'>BARÇA HUB</h2>", unsafe_allow_html=True)
-    st.sidebar.markdown("---")
-    
-    # فلاتر البحث
-    selected_season = st.sidebar.selectbox("📅 اختر الموسم", sorted(df['season_x'].unique(), reverse=True))
-    selected_venue = st.sidebar.multiselect("🏟️ الملعب", options=df['home_away'].unique(), default=df['home_away'].unique())
+# ================== HEADER ==================
+col1, col2 = st.columns([1,6])
 
-    # تصفية الداتا
-    mask = (df['season_x'] == selected_season) & (df['home_away'].isin(selected_venue))
-    filtered_df = df[mask]
-    
-    # استخراج داتا المباريات الفريدة للـ KPIs
-    match_data = filtered_df.drop_duplicates(subset=['match_id'])
+with col1:
+    st.image("../assets/barca_logo.png", width=95)
 
-    # --- 4. العرض الرئيسي ---
-    st.markdown("<h1 style='text-align: center; color: #edbb00; font-size: 50px;'>FC BARCELONA DASHBOARD</h1>", unsafe_allow_html=True)
-    st.markdown(f"<h3 style='text-align: center;'>تحليل أداء الفريق - موسم {selected_season}</h3>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+with col2:
+    st.title("FC Barcelona Performance Intelligence Dashboard")
+    st.caption("Multi-Season Match • Team • Player Analytics")
 
-    # صف الـ KPIs الاحترافي
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    
-    with kpi1:
-        st.metric(label="إجمالي المباريات", value=len(match_data))
-    with kpi2:
-        total_goals = match_data['goals_for'].sum()
-        st.metric(label="الأهداف المسجلة", value=total_goals)
-    with kpi3:
-        avg_poss = round(match_data['possession_pct'].mean(), 1)
-        st.metric(label="متوسط الاستحواذ", value=f"{avg_poss}%")
-    with kpi4:
-        # احتساب نسبة الفوز
-        wins = len(match_data[match_data['goals_for'] > match_data['goals_against']])
-        win_rate = round((wins/len(match_data)*100), 1) if len(match_data) > 0 else 0
-        st.metric(label="نسبة الفوز", value=f"{win_rate}%")
+# ================== SIDEBAR FILTERS ==================
+st.sidebar.header("🔎 Filters")
 
-    st.markdown("<br><hr>", unsafe_allow_html=True)
+season_filter = st.sidebar.multiselect(
+    "Season",
+    sorted(df["season"].unique()),
+    default=sorted(df["season"].unique())
+)
 
-    # --- 5. الرسوم البيانية ---
-    c1, c2 = st.columns(2)
+player_filter = st.sidebar.multiselect(
+    "Player",
+    sorted(df["player"].unique()),
+    default=sorted(df["player"].unique())
+)
 
-    with c1:
-        st.markdown("### 📊 توزيع الاستحواذ حسب الخصم")
-        fig_poss = px.bar(match_data, x='opponent', y='possession_pct', 
-                          color='possession_pct', color_continuous_scale='Reds',
-                          template="plotly_dark")
-        st.plotly_chart(fig_poss, use_container_width=True)
+filtered = df[
+    (df["season"].isin(season_filter)) &
+    (df["player"].isin(player_filter))
+]
 
-    with c2:
-        st.markdown("### ⚽ الأهداف المسجلة مقابل xG")
-        fig_xg = px.scatter(match_data, x='xG_x', y='goals_for', size='shots_x', 
-                            color='goals_for', hover_data=['opponent'],
-                            template="plotly_dark")
-        st.plotly_chart(fig_xg, use_container_width=True)
+# ================== KPIs ==================
+st.markdown("## 📊 Key Performance Indicators")
 
-    # --- 6. جدول البيانات ---
-    st.markdown("### 📋 سجل المباريات التفصيلي")
-    st.dataframe(match_data[['round', 'opponent', 'home_away', 'goals_for', 'goals_against', 'possession_pct']], 
-                 use_container_width=True)
+k1, k2, k3, k4, k5 = st.columns(5)
 
-except Exception as e:
-    st.error(f"حدث خطأ: {e}")
+k1.metric("Matches", filtered["match_id"].nunique())
+k2.metric("Goals Scored", int(filtered["goals_for"].sum()))
+k3.metric("Goals Conceded", int(filtered["goals_against"].sum()))
+k4.metric("Avg Possession %", round(filtered["possession_pct"].mean(), 1))
+k5.metric("Avg xG", round(filtered["xG"].mean(), 2))
+
+st.divider()
+
+# ================== TABS ==================
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["🏟️ Overview", "📅 Seasons", "👤 Players", "🧠 Insights"]
+)
+
+# -------- TAB 1 --------
+with tab1:
+    st.subheader("Goals Across Rounds")
+
+    goals_round = filtered.groupby("round")["goals_for"].sum().reset_index()
+    fig = px.line(goals_round, x="round", y="goals_for", markers=True)
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("Home vs Away Performance")
+    ha = filtered.groupby("home_away")[["goals_for","goals_against"]].mean().reset_index()
+    fig2 = px.bar(ha, x="home_away", y=["goals_for","goals_against"], barmode="group")
+    st.plotly_chart(fig2, use_container_width=True)
+
+# -------- TAB 2 --------
+with tab2:
+    st.subheader("Season Comparison")
+
+    season_stats = filtered.groupby("season")[["goals_for","goals_against","xG"]].mean().reset_index()
+    fig3 = px.bar(season_stats, x="season", y="goals_for")
+    st.plotly_chart(fig3, use_container_width=True)
+
+    fig4 = px.line(season_stats, x="season", y=["xG","goals_for"], markers=True)
+    st.plotly_chart(fig4, use_container_width=True)
+
+# -------- TAB 3 --------
+with tab3:
+    st.subheader("Player Contribution")
+
+    player_stats = filtered.groupby("player")[["goals","assists","minutes_played","xG"]].sum().reset_index()
+
+    fig5 = px.scatter(
+        player_stats,
+        x="minutes_played",
+        y="goals",
+        size="assists",
+        hover_name="player"
+    )
+    st.plotly_chart(fig5, use_container_width=True)
+
+    st.dataframe(player_stats.sort_values(by="goals", ascending=False))
+
+# -------- TAB 4 --------
+with tab4:
+    st.subheader("Correlation Insights")
+
+    corr = filtered[["goals_for","shots","shots_on_target","possession_pct","xG"]].corr()
+    fig6 = px.imshow(corr, text_auto=True, aspect="auto")
+    st.plotly_chart(fig6, use_container_width=True)
+
+    st.markdown("""
+    ### Key Insights
+    - Higher possession correlates with more goals.
+    - Shots on target are critical for match outcomes.
+    - Some players overperform compared to expected goals (xG).
+    """)
+
+# ================== DATA PREVIEW ==================
+st.divider()
+st.subheader("Raw Data Preview")
+st.dataframe(filtered.head(30))
