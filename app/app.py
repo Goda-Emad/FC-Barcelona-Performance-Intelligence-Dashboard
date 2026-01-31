@@ -17,9 +17,8 @@ st.set_page_config(
 
 # ================== BACKGROUND ==================
 def set_background(image_path):
-    image_path = Path(image_path)
-    if not image_path.exists():
-        st.error(f"الصورة مش موجودة! تحقق من المسار: {image_path}")
+    if not Path(image_path).exists():
+        st.warning(f"الصورة مش موجودة! {image_path}")
         return
     with open(image_path, "rb") as f:
         encoded = base64.b64encode(f.read()).decode()
@@ -71,7 +70,6 @@ st.sidebar.markdown("""
     color: #FFFFFF;
     font-weight: bold;
     height: 100%;
-    box-shadow: 2px 2px 12px rgba(0,0,0,0.5);
 ">
     <h3 style="margin:10px 0;">Eng. Goda Emad</h3>
     <a href='https://github.com/Goda-Emad' target='_blank' style='color:#FFFFFF; text-decoration:none; font-size:16px;'>GitHub</a><br>
@@ -80,10 +78,11 @@ st.sidebar.markdown("""
 <hr style="border:1px solid #FFD700; margin:10px 0;">
 """, unsafe_allow_html=True)
 
-# ================== Filters ==================
+# ================== FILTERS ==================
 season_options = sorted(df["season"].unique())
 default_season = ["2024/2025"] if "2024/2025" in season_options else season_options
 season_filter = st.sidebar.multiselect("Season", options=season_options, default=default_season)
+
 player_options = sorted(df[df["season"].isin(season_filter)]["player"].unique())
 player_filter = st.sidebar.multiselect("Player", options=player_options, default=player_options)
 
