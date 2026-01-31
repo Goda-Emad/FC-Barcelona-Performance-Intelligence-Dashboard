@@ -53,17 +53,17 @@ set_background(ASSETS_DIR / "barca_bg.png")
 def load_data():
     df = pd.read_csv(DATA_DIR / "FC_Barcelona_Big_Dataset_TimeSeries.csv")
 
-    # Rename columns for dashboard consistency
+    # Rename columns for consistency
     df.rename(columns={
         "season_x": "season",
         "player": "player",
-        "xG_x": "xg",            # team-level xG
-        "xG_y": "player_xg",     # player-level xG
-        "shots_x": "shots",      # team-level shots
-        "shots_y": "player_shots" # player-level shots
+        "xG_x": "xg",
+        "xG_y": "player_xg",
+        "shots_x": "shots",
+        "shots_y": "player_shots"
     }, inplace=True)
 
-    # Clean all column names
+    # Clean column names
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
     return df
 
@@ -81,25 +81,24 @@ with col2:
 # ================== SIDEBAR FILTERS ==================
 st.sidebar.header("🔎 Filters")
 
-# Verify required columns exist
-required_cols = ["season", "player"]
-for col in required_cols:
-    if col not in df.columns:
-        st.error(f"Required column '{col}' not found in dataset!")
-        st.stop()
-
+# ---- Season filter ----
+season_options = sorted(df["season"].unique())
 season_filter = st.sidebar.multiselect(
     "Season",
-    sorted(df["season"].unique()),
-    default=sorted(df["season"].unique())
+    options=season_options,
+    default=season_options
 )
 
+# ---- Player filter (dynamic based on selected seasons) ----
+filtered_for_players = df[df["season"].isin(season_filter)]
+player_options = sorted(filtered_for_players["player"].unique())
 player_filter = st.sidebar.multiselect(
     "Player",
-    sorted(df["player"].unique()),
-    default=sorted(df["player"].unique())
+    options=player_options,
+    default=player_options
 )
 
+# ---- Final filtered dataframe ----
 filtered = df[
     (df["season"].isin(season_filter)) &
     (df["player"].isin(player_filter))
