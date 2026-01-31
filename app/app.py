@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.express as px
 import base64
 from pathlib import Path
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode
 
 # ================== PATHS ==================
 BASE_DIR = Path(__file__).resolve().parent
@@ -62,6 +61,37 @@ def load_data():
 
 df = load_data()
 
+# ================== SIDEBAR ==================
+st.sidebar.markdown("""
+<div style="
+    background: linear-gradient(180deg, #A50044 0%, #004C97 50%, #FFD700 100%);
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    color: #FFFFFF;
+    font-weight: bold;
+    height: 100%;
+    box-shadow: 2px 2px 12px rgba(0,0,0,0.5);
+">
+    <h3 style="margin:10px 0;">Eng. Goda Emad</h3>
+    <a href='https://github.com/Goda-Emad' target='_blank' style='color:#FFFFFF; text-decoration:none; font-size:16px;'>GitHub</a><br>
+    <a href='https://www.linkedin.com/in/goda-emad/' target='_blank' style='color:#FFFFFF; text-decoration:none; font-size:16px;'>LinkedIn</a>
+</div>
+<hr style="border:1px solid #FFD700; margin:10px 0;">
+""", unsafe_allow_html=True)
+
+# ================== Filters ==================
+season_options = sorted(df["season"].unique())
+default_season = ["2024/2025"] if "2024/2025" in season_options else season_options
+season_filter = st.sidebar.multiselect("Season", options=season_options, default=default_season)
+player_options = sorted(df[df["season"].isin(season_filter)]["player"].unique())
+player_filter = st.sidebar.multiselect("Player", options=player_options, default=player_options)
+
+filtered = df[
+    (df["season"].isin(season_filter)) &
+    (df["player"].isin(player_filter))
+]
+
 # ================== HEADER ==================
 col_logo, col_title = st.columns([1,6])
 with col_logo:
@@ -79,36 +109,6 @@ with col_title:
         <p style="margin:0; font-size:18px;">Multi-Season Match • Team • Player Analytics</p>
     </div>
     """, unsafe_allow_html=True)
-
-# ================== SIDEBAR ==================
-st.sidebar.markdown("""
-<div style="
-    background: linear-gradient(135deg, #A50044 0%, #004C97 50%, #FFD700 100%);
-    padding: 20px;
-    border-radius: 15px;
-    text-align: center;
-    color: #FFFFFF;
-    font-weight: bold;
-    box-shadow: 2px 2px 12px rgba(0,0,0,0.5);
-">
-    <h4 style="margin:5px 0;">Eng. Goda Emad</h4>
-    <a href='https://github.com/Goda-Emad' target='_blank' style='color:#FFFFFF; text-decoration:none;'>GitHub</a><br>
-    <a href='https://www.linkedin.com/in/goda-emad/' target='_blank' style='color:#FFFFFF; text-decoration:none;'>LinkedIn</a>
-</div>
-<hr style="border:1px solid #FFD700; margin:10px 0;">
-""", unsafe_allow_html=True)
-
-# ================== Filters ==================
-season_options = sorted(df["season"].unique())
-default_season = ["2024/2025"] if "2024/2025" in season_options else season_options
-season_filter = st.sidebar.multiselect("Season", options=season_options, default=default_season)
-player_options = sorted(df[df["season"].isin(season_filter)]["player"].unique())
-player_filter = st.sidebar.multiselect("Player", options=player_options, default=player_options)
-
-filtered = df[
-    (df["season"].isin(season_filter)) &
-    (df["player"].isin(player_filter))
-]
 
 # ================== KPI CARDS ==================
 st.markdown("## 📊 Key Performance Indicators - Dynamic")
@@ -128,7 +128,6 @@ for col, kpi in zip(cols, kpi_data):
             border-radius: 15px;
             text-align:center;
             box-shadow: 3px 3px 15px rgba(0,0,0,0.6);
-            transition: transform 0.2s;
         ">
             <div style="font-size:35px;">{kpi['icon']}</div>
             <h4 style="color:#FFD700; margin:5px 0;">{kpi['title']}</h4>
@@ -157,6 +156,7 @@ with tab1:
     fig1 = px.line(goals_round, x="round", y="goals_for", markers=True)
     fig1.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig1, use_container_width=True)
+
     st.subheader("Home vs Away Performance")
     ha = filtered.groupby("home_away")[["goals_for","goals_against"]].mean().reset_index()
     fig2 = px.bar(ha, x="home_away", y=["goals_for","goals_against"], barmode="group")
@@ -180,51 +180,9 @@ with tab3:
     fig5.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig5, use_container_width=True)
 
-    # ================== Raw Data Table with Barça Colors ==================
-    st.markdown("### 🔍 Raw Data Table - Barça Colors")
-    filtered_clean = filtered.fillna(0)
-    gb = GridOptionsBuilder.from_dataframe(filtered_clean)
-    gb.configure_default_column(filter=True, sortable=True, resizable=True)
-
-    numeric_columns = ['goals', 'assists', 'minutes_played', 'player_xg', 'shots', 'shots_on_target']
-    for col in numeric_columns:
-        gb.configure_column(
-            col,
-            cellStyle=JsCode("""
-            function(params) {
-                if (params.value === null) return {};
-                let val = params.value;
-                let color = '#000000';
-                let bg = '#FFFFFF';
-                if(val > 10) bg = '#A50044';
-                else if(val > 5) bg = '#004C97';
-                else bg = '#FFD700';
-                return {color: color, backgroundColor: bg, fontWeight:'bold'};
-            }
-            """)
-        )
-
-    # تلوين عمود player بألوان برشلونة
-    gb.configure_column(
-        "player",
-        cellStyle=JsCode("""
-        function(params) {
-            let colors = ['#A50044','#004C97','#FFD700'];
-            let idx = params.rowIndex % colors.length;
-            return {backgroundColor: colors[idx], color:'#FFFFFF', fontWeight:'bold'};
-        }
-        """)
-    )
-
-    gridOptions = gb.build()
-    AgGrid(
-        filtered_clean.head(1000),
-        gridOptions=gridOptions,
-        height=600,
-        width='100%',
-        theme='light',
-        update_mode=GridUpdateMode.NO_UPDATE
-    )
+    # ================== Raw Data Table ==================
+    st.markdown("### 🔍 Raw Data Table - Full Data")
+    st.dataframe(filtered.reset_index(drop=True), height=600)  # كل الصفوف بدون AgGrid
 
 with tab4:
     st.subheader("Correlation Insights")
