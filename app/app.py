@@ -38,7 +38,7 @@ def set_background(image_path):
         padding: 2rem;
         border-radius: 18px;
     }}
-    h1,h2,h3,h4 {{ color:#FFD700; }}
+    h1,h2,h3,h4,p,span {{ color:#FFD700; }}  /* كل النصوص ذهبية */
     </style>
     """, unsafe_allow_html=True)
 
@@ -49,7 +49,6 @@ set_background(ASSETS_DIR / "barca_bg.png")
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_DIR / "FC_Barcelona_Big_Dataset_TimeSeries.csv")
-    # Rename columns for consistency
     df.rename(columns={
         "season_x": "season",
         "player": "player",
@@ -142,7 +141,6 @@ player_counts = filtered.groupby("player")["match_id"].nunique().reset_index()
 player_counts.rename(columns={"match_id":"matches_played"}, inplace=True)
 player_counts = player_counts.sort_values(by="matches_played", ascending=False)
 
-# Chart لكل اللاعبين
 st.markdown("### توزيع عدد المباريات لكل اللاعبين")
 fig_player = px.bar(
     player_counts,
@@ -156,7 +154,7 @@ fig_player.update_layout(
     xaxis_tickangle=-45,
     plot_bgcolor="rgba(0,0,0,0)",
     paper_bgcolor="rgba(0,0,0,0)",
-    font=dict(color="#FFD700")
+    font=dict(color="#FFD700")  # نصوص ذهبية
 )
 st.plotly_chart(fig_player, use_container_width=True)
 
@@ -169,19 +167,23 @@ with tab1:
     st.subheader("Goals Across Rounds")
     goals_round = filtered.groupby("round")["goals_for"].sum().reset_index()
     fig1 = px.line(goals_round, x="round", y="goals_for", markers=True)
+    fig1.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig1, use_container_width=True)
 
     st.subheader("Home vs Away Performance")
     ha = filtered.groupby("home_away")[["goals_for","goals_against"]].mean().reset_index()
     fig2 = px.bar(ha, x="home_away", y=["goals_for","goals_against"], barmode="group")
+    fig2.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig2, use_container_width=True)
 
 with tab2:
     st.subheader("Season Comparison")
     season_stats = filtered.groupby("season")[["goals_for","goals_against","xg"]].mean().reset_index()
     fig3 = px.bar(season_stats, x="season", y="goals_for")
+    fig3.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig3, use_container_width=True)
     fig4 = px.line(season_stats, x="season", y=["xg","goals_for"], markers=True)
+    fig4.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig4, use_container_width=True)
 
 with tab3:
@@ -194,6 +196,7 @@ with tab3:
         size="assists",
         hover_name="player"
     )
+    fig5.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig5, use_container_width=True)
     st.dataframe(player_stats.sort_values(by="goals", ascending=False))
 
@@ -201,6 +204,7 @@ with tab4:
     st.subheader("Correlation Insights")
     corr = filtered[["goals_for","shots","shots_on_target","possession_pct","xg"]].corr()
     fig6 = px.imshow(corr, text_auto=True, aspect="auto")
+    fig6.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig6, use_container_width=True)
     st.markdown("""
     ### Key Insights
