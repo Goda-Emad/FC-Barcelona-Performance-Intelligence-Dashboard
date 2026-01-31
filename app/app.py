@@ -83,17 +83,22 @@ with col_title:
 # ================== SIDEBAR ==================
 st.sidebar.markdown("""
 <div style="
-    background: linear-gradient(135deg, #A50044 0%, #004C97 100%);
-    padding: 15px;
-    border-radius: 12px;
-    color: #FFD700;
+    background: linear-gradient(135deg, #A50044 0%, #004C97 50%, #FFD700 100%);
+    padding: 20px;
+    border-radius: 15px;
     text-align: center;
-    margin-bottom: 10px;
+    color: #FFFFFF;
+    font-weight: bold;
+    box-shadow: 2px 2px 12px rgba(0,0,0,0.5);
 ">
-    <h3 style="margin:5px 0;">🔎 Filters</h3>
+    <h4 style="margin:5px 0;">Eng. Goda Emad</h4>
+    <a href='https://github.com/Goda-Emad' target='_blank' style='color:#FFFFFF; text-decoration:none;'>GitHub</a><br>
+    <a href='https://www.linkedin.com/in/goda-emad/' target='_blank' style='color:#FFFFFF; text-decoration:none;'>LinkedIn</a>
 </div>
+<hr style="border:1px solid #FFD700; margin:10px 0;">
 """, unsafe_allow_html=True)
 
+# ================== Filters ==================
 season_options = sorted(df["season"].unique())
 default_season = ["2024/2025"] if "2024/2025" in season_options else season_options
 season_filter = st.sidebar.multiselect("Season", options=season_options, default=default_season)
@@ -104,17 +109,6 @@ filtered = df[
     (df["season"].isin(season_filter)) &
     (df["player"].isin(player_filter))
 ]
-
-# ================== Sidebar - معلومات شخصية ==================
-st.sidebar.markdown("""
-<hr style="border:1px solid #FFD700; margin:10px 0;">
-<div style="text-align:center; color:#FFD700;">
-    <h4 style="margin:5px 0;">Eng. Goda Emad</h4>
-    <a href='https://github.com/Goda-Emad' target='_blank' style='color:#FFD700; text-decoration:none;'>GitHub</a> | 
-    <a href='https://www.linkedin.com/in/goda-emad/' target='_blank' style='color:#FFD700; text-decoration:none;'>LinkedIn</a>
-</div>
-<hr style="border:1px solid #FFD700; margin:10px 0;">
-""", unsafe_allow_html=True)
 
 # ================== KPI CARDS ==================
 st.markdown("## 📊 Key Performance Indicators - Dynamic")
@@ -154,7 +148,7 @@ fig_player.update_layout(xaxis_tickangle=-45, plot_bgcolor="rgba(0,0,0,0)",
                          paper_bgcolor="rgba(0,0,0,0)", font=dict(color="#FFD700"))
 st.plotly_chart(fig_player, use_container_width=True)
 
-# ================== TABS ==================
+# ================== Tabs ==================
 tab1, tab2, tab3, tab4 = st.tabs(["🏟️ Overview", "📅 Seasons", "👤 Players", "🧠 Insights"])
 
 with tab1:
@@ -186,9 +180,12 @@ with tab3:
     fig5.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig5, use_container_width=True)
 
-    st.markdown("### 🔍 Raw Data Table - Highlighted & Styled")
-    gb = GridOptionsBuilder.from_dataframe(filtered)
+    # ================== Raw Data Table with Barça Colors ==================
+    st.markdown("### 🔍 Raw Data Table - Barça Colors")
+    filtered_clean = filtered.fillna(0)
+    gb = GridOptionsBuilder.from_dataframe(filtered_clean)
     gb.configure_default_column(filter=True, sortable=True, resizable=True)
+
     numeric_columns = ['goals', 'assists', 'minutes_played', 'player_xg', 'shots', 'shots_on_target']
     for col in numeric_columns:
         gb.configure_column(
@@ -197,16 +194,37 @@ with tab3:
             function(params) {
                 if (params.value === null) return {};
                 let val = params.value;
-                let color = '#FFD700';
-                if(val > 10) color = '#00FF00';
-                else if(val > 5) color = '#FFFF00';
-                else color = '#FFA500';
-                return {color: color, backgroundColor: '#000000', fontWeight:'bold'};
+                let color = '#000000';
+                let bg = '#FFFFFF';
+                if(val > 10) bg = '#A50044';
+                else if(val > 5) bg = '#004C97';
+                else bg = '#FFD700';
+                return {color: color, backgroundColor: bg, fontWeight:'bold'};
             }
             """)
         )
+
+    # تلوين عمود player بألوان برشلونة
+    gb.configure_column(
+        "player",
+        cellStyle=JsCode("""
+        function(params) {
+            let colors = ['#A50044','#004C97','#FFD700'];
+            let idx = params.rowIndex % colors.length;
+            return {backgroundColor: colors[idx], color:'#FFFFFF', fontWeight:'bold'};
+        }
+        """)
+    )
+
     gridOptions = gb.build()
-    AgGrid(filtered, gridOptions=gridOptions, height=600, width='100%', theme='dark', update_mode=GridUpdateMode.NO_UPDATE)
+    AgGrid(
+        filtered_clean.head(1000),
+        gridOptions=gridOptions,
+        height=600,
+        width='100%',
+        theme='light',
+        update_mode=GridUpdateMode.NO_UPDATE
+    )
 
 with tab4:
     st.subheader("Correlation Insights")
