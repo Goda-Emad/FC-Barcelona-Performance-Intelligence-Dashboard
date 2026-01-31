@@ -17,6 +17,11 @@ st.set_page_config(
 
 # ================== BACKGROUND ==================
 def set_background(image_path):
+    image_path = Path(image_path)
+    if not image_path.exists():
+        st.error(f"الصورة مش موجودة! تحقق من المسار: {image_path}")
+        return
+    
     with open(image_path, "rb") as f:
         encoded = base64.b64encode(f.read()).decode()
 
@@ -28,26 +33,18 @@ def set_background(image_path):
         background-position: center;
         background-attachment: fixed;
     }}
-
     .block-container {{
         background-color: rgba(0, 0, 0, 0.80);
         padding: 2rem;
         border-radius: 18px;
     }}
-
-    h1, h2, h3, h4 {{
-        color: white;
-    }}
-
-    [data-testid="stMetricValue"] {{
-        color: #FFD700;
-        font-size: 28px;
-    }}
+    h1,h2,h3,h4 {{ color:white; }}
+    [data-testid="stMetricValue"] {{ color: #FFD700; font-size:28px; }}
     </style>
     """, unsafe_allow_html=True)
 
-# استبدل الصورة هنا بصورة علم برشلونة
-set_background(ASSETS_DIR / "barca_flag.png")  # ضع صورة علم برشلونة في assets باسم barca_flag.png
+# استخدم الخلفية الموجودة
+set_background(ASSETS_DIR / "barca_bg.png")
 
 # ================== LOAD DATA ==================
 @st.cache_data
