@@ -179,7 +179,6 @@ with tab3:
     fig5.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig5, use_container_width=True)
 
-    # ================== Raw Data Table ==================
     st.markdown("### 🔍 Raw Data Table - Full Data")
     st.dataframe(filtered.reset_index(drop=True), height=600)  # كل الصفوف بدون AgGrid
 
