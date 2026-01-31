@@ -38,7 +38,7 @@ def set_background(image_path):
         padding: 2rem;
         border-radius: 18px;
     }}
-    h1,h2,h3,h4,p,span {{ color:#FFD700; }}  /* كل النصوص ذهبية */
+    h1,h2,h3,h4,p,span,a {{ color:#FFD700; }}  /* كل النصوص ذهبية */
     </style>
     """, unsafe_allow_html=True)
 
@@ -59,11 +59,10 @@ def load_data():
         "shots_y": "player_shots"
     }, inplace=True)
     
-    # تنظيف الأعمدة النصية: إزالة الفراغات الزائدة
+    # تنظيف الأعمدة النصية
     df['season'] = df['season'].astype(str).str.strip()
     df['player'] = df['player'].astype(str).str.strip()
     
-    # تنظيف باقي الأعمدة إذا لزم
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
     
     return df
@@ -89,8 +88,19 @@ with col_title:
     </div>
     """, unsafe_allow_html=True)
 
-# ================== SIDEBAR FILTERS ==================
-st.sidebar.header("🔎 Filters")
+# ================== SIDEBAR ==================
+st.sidebar.markdown("""
+<div style="
+    background: linear-gradient(135deg, #A50044 0%, #004C97 100%);
+    padding: 15px;
+    border-radius: 12px;
+    color: #FFD700;
+    text-align: center;
+    margin-bottom: 10px;
+">
+    <h3 style="margin:5px 0;">🔎 Filters</h3>
+</div>
+""", unsafe_allow_html=True)
 
 # فلتر الموسم
 season_options = sorted(df["season"].unique())
@@ -99,16 +109,19 @@ default_season = ["2024/2025"] if "2024/2025" in season_options else season_opti
 season_filter = st.sidebar.multiselect(
     "Season",
     options=season_options,
-    default=default_season
+    default=default_season,
+    help="اختر الموسم",
+    key="season_filter"
 )
 
-# فلتر اللاعبين: نأخذ كل اللاعبين الموجودين في المواسم المحددة
+# فلتر اللاعبين حسب الموسم المختار
 player_options = sorted(df[df["season"].isin(season_filter)]["player"].unique())
-
 player_filter = st.sidebar.multiselect(
     "Player",
     options=player_options,
-    default=player_options  # كل اللاعبين يظهرون افتراضيًا
+    default=player_options,
+    help="اختر اللاعب",
+    key="player_filter"
 )
 
 # تطبيق الفلاتر
@@ -117,7 +130,18 @@ filtered = df[
     (df["player"].isin(player_filter))
 ]
 
-# ================== DYNAMIC KPI CARDS ==================
+# ================== Sidebar - معلومات شخصية ==================
+st.sidebar.markdown("""
+<hr style="border:1px solid #FFD700; margin:10px 0;">
+<div style="text-align:center; color:#FFD700;">
+    <h4 style="margin:5px 0;">Eng. Goda Emad</h4>
+    <a href='https://github.com/Goda-Emad' target='_blank' style='color:#FFD700; text-decoration:none;'>GitHub</a> | 
+    <a href='https://www.linkedin.com/in/goda-emad/' target='_blank' style='color:#FFD700; text-decoration:none;'>LinkedIn</a>
+</div>
+<hr style="border:1px solid #FFD700; margin:10px 0;">
+""", unsafe_allow_html=True)
+
+# ================== KPI CARDS ==================
 st.markdown("## 📊 Key Performance Indicators - Dynamic")
 
 kpi_data = [
@@ -214,7 +238,6 @@ with tab3:
     st.markdown("### بيانات اللاعبين - قابلة للبحث والتحميل")
     st.dataframe(filtered, height=500)
 
-    # زر تحميل البيانات المفلترة
     csv = filtered.to_csv(index=False).encode('utf-8')
     st.download_button(
         label="⬇️ تحميل البيانات المفلترة كـ CSV",
