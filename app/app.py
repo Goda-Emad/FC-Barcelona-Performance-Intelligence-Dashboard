@@ -46,7 +46,8 @@ def set_background(image_path):
     </style>
     """, unsafe_allow_html=True)
 
-set_background(ASSETS_DIR / "barca_bg.png")
+# استبدل الصورة هنا بصورة علم برشلونة
+set_background(ASSETS_DIR / "barca_flag.png")  # ضع صورة علم برشلونة في assets باسم barca_flag.png
 
 # ================== LOAD DATA ==================
 @st.cache_data
@@ -115,6 +116,54 @@ k4.metric("Avg Possession %", round(filtered["possession_pct"].mean(), 1))
 k5.metric("Avg xG", round(filtered["xg"].mean(), 2))
 
 st.divider()
+
+# ================== PLAYER OVERVIEW ==================
+st.markdown("## 👤 Player Overview")
+st.markdown("### عدد اللاعبين وإسهامهم في المباريات")
+
+# عدد اللاعبين الفريدين
+num_players = filtered["player"].nunique()
+st.markdown(f"**عدد اللاعبين الفريدين في البيانات:** {num_players}")
+
+# ترتيب اللاعبين حسب عدد المباريات
+player_counts = filtered.groupby("player")["match_id"].nunique().reset_index()
+player_counts.rename(columns={"match_id":"matches_played"}, inplace=True)
+player_counts = player_counts.sort_values(by="matches_played", ascending=False)
+
+# KPI أعلى 5 لاعبين حسب عدد المباريات
+top_players = player_counts.head(5)
+k1, k2, k3, k4, k5 = st.columns(5)
+kpi_colors = ["#FFD700","#1E90FF","#FF4500","#32CD32","#FF69B4"]  # ذهبية - أزرق - أحمر - أخضر - وردي
+
+for i, col in enumerate([k1,k2,k3,k4,k5]):
+    if i < len(top_players):
+        player = top_players.iloc[i]["player"]
+        matches = top_players.iloc[i]["matches_played"]
+        col.markdown(f"""
+            <div style="background-color:{kpi_colors[i]}; padding: 10px; border-radius:10px; text-align:center;">
+                <h4 style="color:white;margin:0">{player}</h4>
+                <h2 style="color:white;margin:0">{matches} ⚽</h2>
+            </div>
+        """, unsafe_allow_html=True)
+
+# Chart لكل اللاعبين
+st.markdown("### توزيع عدد المباريات لكل اللاعبين")
+fig_player = px.bar(
+    player_counts,
+    x="player",
+    y="matches_played",
+    color="matches_played",
+    color_continuous_scale="Viridis",
+    title="عدد المباريات لكل لاعب",
+    labels={"matches_played":"عدد المباريات","player":"اللاعب"}
+)
+fig_player.update_layout(
+    xaxis_tickangle=-45,
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+    font=dict(color="white")
+)
+st.plotly_chart(fig_player, use_container_width=True)
 
 # ================== TABS ==================
 tab1, tab2, tab3, tab4 = st.tabs(
