@@ -83,23 +83,25 @@ with col_title:
 # ================== SIDEBAR FILTERS ==================
 st.sidebar.header("🔎 Filters")
 
-# كل المواسم الموجودة
+# ====== فلتر المواسم ======
 season_options = sorted(df["season"].unique())
+default_season = ["2024/2025"] if "2024/2025" in season_options else season_options
+
 season_filter = st.sidebar.multiselect(
     "Season",
     options=season_options,
-    default=season_options
+    default=default_season
 )
 
-# ✅ كل اللاعبين في الداتا الكبيرة (حتى لو مكرر في مواسم مختلفة)
+# ====== فلتر اللاعبين ======
 player_options = sorted(df["player"].unique())
 player_filter = st.sidebar.multiselect(
     "Player",
     options=player_options,
-    default=player_options  # كل اللاعبين يظهرون تلقائيًا
+    default=player_options
 )
 
-# تطبيق الفلاتر
+# ====== تطبيق الفلاتر على الداتا ======
 filtered = df[
     (df["season"].isin(season_filter)) &
     (df["player"].isin(player_filter))
@@ -200,7 +202,7 @@ with tab3:
     st.plotly_chart(fig5, use_container_width=True)
 
     st.markdown("### بيانات اللاعبين - قابلة للبحث والتحميل")
-    st.dataframe(filtered, height=500)  # scrollbar عمودي للبيانات الكبيرة
+    st.dataframe(filtered, height=500)
 
     # زر تحميل البيانات المفلترة
     csv = filtered.to_csv(index=False).encode('utf-8')
