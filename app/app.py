@@ -17,11 +17,14 @@ st.set_page_config(
 
 # ================== BACKGROUND ==================
 def set_background(image_path):
-    if not Path(image_path).exists():
-        st.warning(f"الصورة مش موجودة! {image_path}")
+    image_path = Path(image_path)
+    if not image_path.exists():
+        st.error(f"الصورة مش موجودة! تحقق من المسار: {image_path}")
         return
+    
     with open(image_path, "rb") as f:
         encoded = base64.b64encode(f.read()).decode()
+
     st.markdown(f"""
     <style>
     .stApp {{
@@ -35,7 +38,7 @@ def set_background(image_path):
         padding: 2rem;
         border-radius: 18px;
     }}
-    h1,h2,h3,h4,p,span,a {{ color:#FFD700; }}
+    h1,h2,h3,h4,p,span {{ color:#FFD700; }}  /* كل النصوص ذهبية */
     </style>
     """, unsafe_allow_html=True)
 
@@ -45,6 +48,8 @@ set_background(ASSETS_DIR / "barca_bg.png")
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_DIR / "FC_Barcelona_Big_Dataset_TimeSeries.csv")
+    
+    # إعادة تسمية الأعمدة لتسهيل التعامل
     df.rename(columns={
         "season_x": "season",
         "player": "player",
@@ -53,48 +58,23 @@ def load_data():
         "shots_x": "shots",
         "shots_y": "player_shots"
     }, inplace=True)
+    
+    # تنظيف الأعمدة النصية: إزالة الفراغات الزائدة
     df['season'] = df['season'].astype(str).str.strip()
     df['player'] = df['player'].astype(str).str.strip()
+    
+    # تنظيف باقي الأعمدة إذا لزم
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+    
     return df
 
 df = load_data()
-
-# ================== SIDEBAR ==================
-st.sidebar.markdown("""
-<div style="
-    background: linear-gradient(180deg, #A50044 0%, #004C97 50%, #FFD700 100%);
-    padding: 30px;
-    border-radius: 15px;
-    text-align: center;
-    color: #FFFFFF;
-    font-weight: bold;
-    height: 100%;
-">
-    <h3 style="margin:10px 0;">Eng. Goda Emad</h3>
-    <a href='https://github.com/Goda-Emad' target='_blank' style='color:#FFFFFF; text-decoration:none; font-size:16px;'>GitHub</a><br>
-    <a href='https://www.linkedin.com/in/goda-emad/' target='_blank' style='color:#FFFFFF; text-decoration:none; font-size:16px;'>LinkedIn</a>
-</div>
-<hr style="border:1px solid #FFD700; margin:10px 0;">
-""", unsafe_allow_html=True)
-
-# ================== FILTERS ==================
-season_options = sorted(df["season"].unique())
-default_season = ["2024/2025"] if "2024/2025" in season_options else season_options
-season_filter = st.sidebar.multiselect("Season", options=season_options, default=default_season)
-
-player_options = sorted(df[df["season"].isin(season_filter)]["player"].unique())
-player_filter = st.sidebar.multiselect("Player", options=player_options, default=player_options)
-
-filtered = df[
-    (df["season"].isin(season_filter)) &
-    (df["player"].isin(player_filter))
-]
 
 # ================== HEADER ==================
 col_logo, col_title = st.columns([1,6])
 with col_logo:
     st.image(ASSETS_DIR / "barca_logo.png", width=90)
+
 with col_title:
     st.markdown(f"""
     <div style="
@@ -109,8 +89,37 @@ with col_title:
     </div>
     """, unsafe_allow_html=True)
 
-# ================== KPI CARDS ==================
+# ================== SIDEBAR FILTERS ==================
+st.sidebar.header("🔎 Filters")
+
+# فلتر الموسم
+season_options = sorted(df["season"].unique())
+default_season = ["2024/2025"] if "2024/2025" in season_options else season_options
+
+season_filter = st.sidebar.multiselect(
+    "Season",
+    options=season_options,
+    default=default_season
+)
+
+# فلتر اللاعبين: نأخذ كل اللاعبين الموجودين في المواسم المحددة
+player_options = sorted(df[df["season"].isin(season_filter)]["player"].unique())
+
+player_filter = st.sidebar.multiselect(
+    "Player",
+    options=player_options,
+    default=player_options  # كل اللاعبين يظهرون افتراضيًا
+)
+
+# تطبيق الفلاتر
+filtered = df[
+    (df["season"].isin(season_filter)) &
+    (df["player"].isin(player_filter))
+]
+
+# ================== DYNAMIC KPI CARDS ==================
 st.markdown("## 📊 Key Performance Indicators - Dynamic")
+
 kpi_data = [
     {"title": "Matches", "value": filtered["match_id"].nunique(), "icon": "🏟️", "color":"#A50044"},
     {"title": "Goals Scored", "value": int(filtered["goals_for"].sum()), "icon": "⚽", "color":"#004C97"},
@@ -118,6 +127,7 @@ kpi_data = [
     {"title": "Avg Possession %", "value": round(filtered["possession_pct"].mean(),1), "icon": "📊", "color":"#A50044"},
     {"title": "Avg xG", "value": round(filtered["xg"].mean(),2), "icon": "🎯", "color":"#004C97"}
 ]
+
 cols = st.columns(len(kpi_data))
 for col, kpi in zip(cols, kpi_data):
     col.markdown(f"""
@@ -127,6 +137,7 @@ for col, kpi in zip(cols, kpi_data):
             border-radius: 15px;
             text-align:center;
             box-shadow: 3px 3px 15px rgba(0,0,0,0.6);
+            transition: transform 0.2s;
         ">
             <div style="font-size:35px;">{kpi['icon']}</div>
             <h4 style="color:#FFD700; margin:5px 0;">{kpi['title']}</h4>
@@ -137,17 +148,32 @@ for col, kpi in zip(cols, kpi_data):
 # ================== PLAYER OVERVIEW ==================
 st.markdown("## 👤 Player Overview")
 st.markdown(f"**عدد اللاعبين الفريدين في البيانات:** <span style='color:#FFD700'>{filtered['player'].nunique()}</span>", unsafe_allow_html=True)
+
 player_counts = filtered.groupby("player")["match_id"].nunique().reset_index()
 player_counts.rename(columns={"match_id":"matches_played"}, inplace=True)
 player_counts = player_counts.sort_values(by="matches_played", ascending=False)
-fig_player = px.bar(player_counts, x="player", y="matches_played", color="matches_played",
-                    color_continuous_scale="Viridis", labels={"matches_played":"عدد المباريات","player":"اللاعب"})
-fig_player.update_layout(xaxis_tickangle=-45, plot_bgcolor="rgba(0,0,0,0)",
-                         paper_bgcolor="rgba(0,0,0,0)", font=dict(color="#FFD700"))
+
+st.markdown("### توزيع عدد المباريات لكل اللاعبين")
+fig_player = px.bar(
+    player_counts,
+    x="player",
+    y="matches_played",
+    color="matches_played",
+    color_continuous_scale="Viridis",
+    labels={"matches_played":"عدد المباريات","player":"اللاعب"}
+)
+fig_player.update_layout(
+    xaxis_tickangle=-45,
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+    font=dict(color="#FFD700")
+)
 st.plotly_chart(fig_player, use_container_width=True)
 
-# ================== Tabs ==================
-tab1, tab2, tab3, tab4 = st.tabs(["🏟️ Overview", "📅 Seasons", "👤 Players", "🧠 Insights"])
+# ================== TABS ==================
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["🏟️ Overview", "📅 Seasons", "👤 Players", "🧠 Insights"]
+)
 
 with tab1:
     st.subheader("Goals Across Rounds")
@@ -175,12 +201,27 @@ with tab2:
 with tab3:
     st.subheader("Player Contribution")
     player_stats = filtered.groupby("player")[["goals","assists","minutes_played","player_xg"]].sum().reset_index()
-    fig5 = px.scatter(player_stats, x="minutes_played", y="goals", size="assists", hover_name="player")
+    fig5 = px.scatter(
+        player_stats,
+        x="minutes_played",
+        y="goals",
+        size="assists",
+        hover_name="player"
+    )
     fig5.update_layout(font=dict(color="#FFD700"))
     st.plotly_chart(fig5, use_container_width=True)
 
-    st.markdown("### 🔍 Raw Data Table - Full Data")
-    st.dataframe(filtered.reset_index(drop=True), height=600)  # كل الصفوف بدون AgGrid
+    st.markdown("### بيانات اللاعبين - قابلة للبحث والتحميل")
+    st.dataframe(filtered, height=500)
+
+    # زر تحميل البيانات المفلترة
+    csv = filtered.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="⬇️ تحميل البيانات المفلترة كـ CSV",
+        data=csv,
+        file_name='barcelona_filtered_data.csv',
+        mime='text/csv'
+    )
 
 with tab4:
     st.subheader("Correlation Insights")
@@ -194,3 +235,7 @@ with tab4:
     - Shots on target are critical for outcomes.
     - Some players outperform their expected goals (xG).
     """)
+
+st.divider()
+st.subheader("Raw Data Preview")
+st.dataframe(filtered, height=500)
