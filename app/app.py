@@ -39,7 +39,7 @@ def set_background(image_path):
         border-radius: 18px;
     }}
     h1,h2,h3,h4 {{ color:white; }}
-    [data-testid="stMetricValue"] {{ color: #FFD700; font-size:28px; }}
+    [data-testid="stMetricValue"] {{ font-size:28px; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -68,13 +68,23 @@ def load_data():
 df = load_data()
 
 # ================== HEADER ==================
-col1, col2 = st.columns([1,6])
-with col1:
-    st.image(ASSETS_DIR / "barca_logo.png", width=95)
+col_logo, col_title = st.columns([1,6])
+with col_logo:
+    st.image(ASSETS_DIR / "barca_logo.png", width=90)
 
-with col2:
-    st.title("FC Barcelona Performance Intelligence Dashboard")
-    st.caption("Multi-Season Match • Team • Player Analytics")
+with col_title:
+    st.markdown(f"""
+    <div style="
+        background-color: rgba(0,0,0,0.7);
+        padding: 15px 25px;
+        border-radius:12px;
+        text-align:center;
+        margin-bottom:10px;
+    ">
+        <h1 style="color:#FFD700; margin:0; font-size:40px;">FC Barcelona Performance Intelligence Dashboard</h1>
+        <p style="color:white; margin:0; font-size:18px;">Multi-Season Match • Team • Player Analytics</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ================== SIDEBAR FILTERS ==================
 st.sidebar.header("🔎 Filters")
@@ -105,14 +115,32 @@ filtered = df[
 # ================== KPIs ==================
 st.markdown("## 📊 Key Performance Indicators")
 
-k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Matches", filtered["match_id"].nunique())
-k2.metric("Goals Scored", int(filtered["goals_for"].sum()))
-k3.metric("Goals Conceded", int(filtered["goals_against"].sum()))
-k4.metric("Avg Possession %", round(filtered["possession_pct"].mean(), 1))
-k5.metric("Avg xG", round(filtered["xg"].mean(), 2))
+kpi_data = {
+    "Matches": filtered["match_id"].nunique(),
+    "Goals Scored": int(filtered["goals_for"].sum()),
+    "Goals Conceded": int(filtered["goals_against"].sum()),
+    "Avg Possession %": round(filtered["possession_pct"].mean(),1),
+    "Avg xG": round(filtered["xg"].mean(),2)
+}
 
-st.divider()
+# ألوان مستوحاة من علم برشلونة: أحمر – أزرق – أصفر – ذهبي
+kpi_colors = ["#A50044","#004C97","#FFD700","#A50044","#004C97"]
+
+k1, k2, k3, k4, k5 = st.columns(5)
+
+for col, (kpi_name, kpi_value), color in zip([k1,k2,k3,k4,k5], kpi_data.items(), kpi_colors):
+    col.markdown(f"""
+        <div style="
+            background-color:{color};
+            padding:20px;
+            border-radius:15px;
+            text-align:center;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+        ">
+            <h4 style="color:white; margin-bottom:5px;">{kpi_name}</h4>
+            <h2 style="color:white; margin-top:0;">{kpi_value}</h2>
+        </div>
+    """, unsafe_allow_html=True)
 
 # ================== PLAYER OVERVIEW ==================
 st.markdown("## 👤 Player Overview")
@@ -130,14 +158,14 @@ player_counts = player_counts.sort_values(by="matches_played", ascending=False)
 # KPI أعلى 5 لاعبين حسب عدد المباريات
 top_players = player_counts.head(5)
 k1, k2, k3, k4, k5 = st.columns(5)
-kpi_colors = ["#FFD700","#1E90FF","#FF4500","#32CD32","#FF69B4"]  # ذهبية - أزرق - أحمر - أخضر - وردي
+kpi_colors_players = ["#FFD700","#1E90FF","#FF4500","#32CD32","#FF69B4"]  # ذهبية - أزرق - أحمر - أخضر - وردي
 
 for i, col in enumerate([k1,k2,k3,k4,k5]):
     if i < len(top_players):
         player = top_players.iloc[i]["player"]
         matches = top_players.iloc[i]["matches_played"]
         col.markdown(f"""
-            <div style="background-color:{kpi_colors[i]}; padding: 10px; border-radius:10px; text-align:center;">
+            <div style="background-color:{kpi_colors_players[i]}; padding: 10px; border-radius:10px; text-align:center;">
                 <h4 style="color:white;margin:0">{player}</h4>
                 <h2 style="color:white;margin:0">{matches} ⚽</h2>
             </div>
